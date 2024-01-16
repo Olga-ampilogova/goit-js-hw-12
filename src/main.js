@@ -7,20 +7,15 @@ import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
 import axios from "axios";
 
-window.scrollBy(0, window.innerHeight);
-window.scrollBy(0, -window.innerHeight);
-
-const item = document.querySelector('.gallery');
-const inputValue = document.querySelector('.searchform')
+const galleryTile = document.querySelector('.gallery');
+const searchValue = document.querySelector('.searchform')
 const searchForm = document.querySelector('.search-form');
-const loadingIndicator  = document.querySelector('.spinner');
+const loadIndicator  = document.querySelector('.spinner');
 const loadMoreButton = document.querySelector('.load_more');
 
-
-
 let perPage = 40;
-const totalPages = Math.ceil(100 / perPage);
 let page = 1;
+const totalPages = Math.ceil(100 / perPage);
 let gallery = new SimpleLightbox('.gallery a', { captionDelay: 250, captionsData: 'alt', close: true, className: 'modal-style' });
 gallery.on('show.simplelightbox', function () {});
 axios.defaults.baseURL = 'https://pixabay.com/api';
@@ -36,18 +31,11 @@ const queryParams = {
 };
 
 async function fetchPhotos() {
-    showLoad();
+    showLoadIndicator();
     hideMoreButton()
-    if (page > totalPages) {
-        hideLoad();
-        iziToast.error({
-            position: "topCenter",
-            message: "We're sorry, there are no more posts to load"
-        });
-        return;
-    }
 
     try {
+        queryParams.page = page;
         const response = await axios.get('/', { params: queryParams });
         const { hits } = response.data;
 
@@ -75,21 +63,29 @@ async function fetchPhotos() {
                         </div>
                 </li>`,
             '');
-        item.insertAdjacentHTML("beforeend", renderImages);
+        galleryTile.insertAdjacentHTML("beforeend", renderImages);
         gallery.refresh();
-        hideLoad();
-        showMoreButton();
+        hideLoadIndicator();
+        if (page >= totalPages) {
+            iziToast.info({
+                position: "topCenter",
+                message: "We're sorry, there are no more posts to load"
+            });
+        }
+        else {
+            showMoreButton();
+        }
     } catch (error) {
         console.error(error);
     }
 }
 loadMoreButton.addEventListener("click", async () => {
     hideMoreButton();
-    showLoad();
+    showLoadIndicator();
+    page += 1;
+    queryParams.page = page;
     try {
-        page += 1;
-        queryParams.page = page;
-        const posts = await fetchPhotos();
+        await fetchPhotos();
     } catch (error) {
         console.log(error);
     }
@@ -97,34 +93,42 @@ loadMoreButton.addEventListener("click", async () => {
     const buttonRect = myImage.getBoundingClientRect();
     const buttonHeight = buttonRect.height;
     window.scrollBy({
-    top: buttonHeight*2,
-    behavior: 'smooth',
-  });
+        top: buttonHeight*2,
+        behavior: 'smooth',
+    });
 });
 
 searchForm.addEventListener('submit', (event) => {
     event.preventDefault();
     page = 1;
-    if (inputValue.value.trim().length === 0) {
+    cleanScreen();
+    hideMoreButton();
+    if (searchValue.value.trim().length === 0) {
+        iziToast.error({
+            title: 'Error',
+            position: 'topCenter',
+            message: "Sorry, Please choose a topic."
+         });
         return;
     }
-    cleanScreen();
-    showLoad();
-    queryParams.q = inputValue.value;
+    showLoadIndicator();
+    queryParams.q = searchValue.value;
     fetchPhotos();
-    inputValue.value = '';
+    searchValue.value = '';
 });
 
 function cleanScreen() {
-    item.replaceChildren();
+    galleryTile.replaceChildren();
 }
 
-function hideLoad() {
-    loadingIndicator .style.visibility = 'hidden';
-      }
-function showLoad() {
-    loadingIndicator .style.visibility = 'visible';
-      }
+function hideLoadIndicator() {
+    loadIndicator .style.visibility = 'hidden';
+}
+
+function showLoadIndicator() {
+    loadIndicator .style.visibility = 'visible';
+}
+
 function showMoreButton() {
     loadMoreButton.style.visibility = 'visible';
 }
