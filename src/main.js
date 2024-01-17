@@ -13,9 +13,48 @@ const searchForm = document.querySelector('.search-form');
 const loadIndicator  = document.querySelector('.spinner');
 const loadMoreButton = document.querySelector('.load_more');
 
-let perPage = 40;
+loadMoreButton.addEventListener("click", async () => {
+    hideMoreButton();
+    showLoadIndicator();
+    page += 1;
+    queryParams.page = page;
+    try {
+        await fetchPhotos();
+    } catch (error) {
+        console.log(error);
+    }
+    const myImage = document.querySelector('.gallery-item');
+    const buttonRect = myImage.getBoundingClientRect();
+    const buttonHeight = buttonRect.height;
+    window.scrollBy({
+        top: buttonHeight*2,
+        behavior: 'smooth',
+    });
+});
+
+searchForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    page = 1;
+    cleanScreen();
+    hideMoreButton();
+    const adjastedValue = searchValue.value.trim();
+    if (adjastedValue.length === 0) {
+        iziToast.error({
+            title: 'Error',
+            position: 'topCenter',
+            message: "Sorry, Please choose a topic."
+         });
+        return;
+    }
+    showLoadIndicator();
+    queryParams.q = adjastedValue;
+    fetchPhotos();
+    searchValue.value = '';
+});
+
+let hitsPerPage = 40;
 let page = 1;
-const totalPages = Math.ceil(100 / perPage);
+let totalPages = 0;
 let gallery = new SimpleLightbox('.gallery a', { captionDelay: 250, captionsData: 'alt', close: true, className: 'modal-style' });
 gallery.on('show.simplelightbox', function () {});
 axios.defaults.baseURL = 'https://pixabay.com/api';
@@ -26,7 +65,7 @@ const queryParams = {
     image_type: 'photo',
     orientation: 'horizontal',
     safesearch: 'true',
-    per_page: perPage,
+    per_page: hitsPerPage,
     page: page,
 };
 
@@ -37,7 +76,8 @@ async function fetchPhotos() {
     try {
         queryParams.page = page;
         const response = await axios.get('/', { params: queryParams });
-        const { hits } = response.data;
+        const { totalHits, hits } = response.data;
+        totalPages = Math.ceil(totalHits/ hitsPerPage);
 
         if (hits.length === 0) {
             iziToast.error({
@@ -79,43 +119,6 @@ async function fetchPhotos() {
         console.error(error);
     }
 }
-loadMoreButton.addEventListener("click", async () => {
-    hideMoreButton();
-    showLoadIndicator();
-    page += 1;
-    queryParams.page = page;
-    try {
-        await fetchPhotos();
-    } catch (error) {
-        console.log(error);
-    }
-    const myImage = document.querySelector('.gallery-item');
-    const buttonRect = myImage.getBoundingClientRect();
-    const buttonHeight = buttonRect.height;
-    window.scrollBy({
-        top: buttonHeight*2,
-        behavior: 'smooth',
-    });
-});
-
-searchForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    page = 1;
-    cleanScreen();
-    hideMoreButton();
-    if (searchValue.value.trim().length === 0) {
-        iziToast.error({
-            title: 'Error',
-            position: 'topCenter',
-            message: "Sorry, Please choose a topic."
-         });
-        return;
-    }
-    showLoadIndicator();
-    queryParams.q = searchValue.value;
-    fetchPhotos();
-    searchValue.value = '';
-});
 
 function cleanScreen() {
     galleryTile.replaceChildren();
